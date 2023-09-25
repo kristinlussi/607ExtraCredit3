@@ -1,0 +1,167 @@
+---
+title: 'DATA 607 Extra Credit'
+subtitle: 'Window Functions'
+author: "Kristin Lussi"
+date: "2023-9-26"
+output: slidy_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+In this presentation, I will demonstrate time series analysis on a dataset which provides daily climate data from January 1, 2013 to April 24, 2017 in the city of Delhi, India. The variables measured are mean temperature (celsius), humidity (g.m^-3), wind speed (kmph), and mean pressure (atm). 
+
+```{r, message = FALSE, warning = FALSE}
+library(readr)
+library(stringr)
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+library(gt)
+
+urlfile <- "https://raw.githubusercontent.com/kristinlussi/607ExtraCredit3/main/DailyDelhiClimateTrain.csv"
+
+delhiClimate <- read_csv(url(urlfile), show_col_types = FALSE)
+```
+
+Here is a glimpse of the data:
+```{r}
+head(delhiClimate) 
+```
+## Yearly Averages
+
+Here, we will calculate the yearly averages for each year (2013 - 2016).
+
+```{r}
+yearly_average <- delhiClimate %>%
+  mutate(year = year(delhiClimate$date)) %>%
+  group_by(year) %>%
+  summarize(
+    meanTemp = mean(meantemp, na.rm = TRUE),
+    humidity = mean(humidity, na.rm = TRUE),
+    windSpeed = mean(wind_speed, na.rm = TRUE),
+    meanPressure = mean(meanpressure, na.rm = TRUE)
+  ) 
+
+# filter out year 2017
+yearly_average <- yearly_average %>%
+  filter(year != 2017)
+```
+
+```{r, include = FALSE}
+yearly_average_tbl <- gt(yearly_average) |>
+  tab_header(
+    title = md("**Yearly Averages for Years 2013 to 2016**"),
+    subtitle = "Recorded in Delhi, India"
+  ) |>
+  cols_label(
+    year = md("**Year**"),
+    meanTemp = md("**Mean Temp**"),
+    humidity = md("**Humidity**"),
+    windSpeed = md("**Wind Speed**"),
+    meanPressure = md("**Mean Pressure**")
+  )
+```
+
+```{r}
+yearly_average_tbl
+```
+
+## 30 Day Moving Average
+
+Here, I calculated the 30-day moving averages for each variable using filter function from the stats package. I used 30 days here instead of 6 because we are looking at a long stretch of data (2013-2016). It is easier to see long-term trends when using a longer moving average. 
+
+```{r}
+# calculate 30-day moving average for mean temperature column
+delhiClimate$temp_ma <- stats::filter(delhiClimate$meantemp, filter = rep(1/30, 30), sides = 2)
+
+# calculate 30-day moving average for humidity column
+delhiClimate$humidity_ma <- stats::filter(delhiClimate$humidity, filter = rep(1/30, 30), sides = 2)
+
+# calculate 30-day moving average for wind speed column
+delhiClimate$windspeed_ma <- stats::filter(delhiClimate$wind_speed, filter = rep(1/30, 30), sides = 2)
+
+# calculate 30-day moving average for mean pressure column 
+delhiClimate$pressure_ma <- stats::filter(delhiClimate$meanpressure, filter = rep(1/30, 30), sides = 2)
+```
+
+## Time Series Plot for Mean Temperature
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(data = delhiClimate) +
+  geom_line(aes(x = date, y = temp_ma, color = factor(year(date)), group = year(date)), 
+            na.rm = TRUE, linewidth = 1) + 
+  labs(x = "Year", y = "Mean Temperature (°C)", title = "30 Day Moving Average of Mean Temperature") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+As you can see from the plot, there is a similar trend from year to year, with higher temperatures in the summer months and lower temperatures in the winter months. 
+
+## Time Series Plot for Humidity
+```{r, warning = FALSE, message = FALSE}
+ggplot(data = delhiClimate) +
+  geom_line(aes(x = date, y = humidity_ma, color = factor(year(date)), group = year(date)), 
+            na.rm = TRUE, linewidth = 1) +
+  labs(x = "Year", y = "Humidity", title = "30 Day Moving Average of Humidity") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+As you can see from the above plot, there is a slight trend in humidity levels from year to year. The humidity is lower in the spring and higher in the summer and winter months. 
+
+## Time Series Plot for Wind Speed
+```{r, warning = FALSE, message = FALSE}
+ggplot(data = delhiClimate) +
+  geom_line(aes(x = date, y = windspeed_ma, color = factor(year(date)), group = year(date)), 
+            na.rm = TRUE, linewidth = 1) +  
+  labs(x = "Year", y = "Wind Speed (kmph)", title = "30 Day Moving Average of Wind Speed") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+From the above plot, we can see that there is a slight trend in wind speed from year-to-year. Wind speed tends to be highest in the middle of the year (June).
+
+## Time Series Plot for Mean Pressure
+```{r, warning = FALSE, message = FALSE}
+ggplot(data = delhiClimate) +
+  geom_line(aes(x = date, y = pressure_ma, color = factor(year(date)), group = year(date)), 
+            na.rm = TRUE, linewidth = 1) +  
+  labs(x = "Year", y = "Mean Pressure (atm)", title = "30 Day Moving Average of Mean Pressure") +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+As you can see, it seems that there was a trend in the years 2013-2015, but in 2016 there was an unsual spike and decline in mean pressure levels. 
+
+## Conclusion
+
+From the analysis, we can conclude that there is a\ trend from year-to-year in regards to mean temperature, humidity, and wind speed. However, we cannot conclude that there is a trend from year-to-year in regards to mean pressure, since there was an unusual spike and decline in 2016 which we are not able to explain with the data provided. 
+
+## Sources
+
+### Kaggle Dataset:
+
+Title: Daily Climate Time Series Data
+
+Author/Uploader: Sumanthvrao
+
+URL: https://www.kaggle.com/datasets/sumanthvrao/daily-climate-time-series-data
+
+### TradeStation Help Page:
+Title: What is a Trend?
+
+Publisher/Website: TradeStation
+
+URL: https://help.tradestation.com/10_00/eng/tradestationhelp/data/what_trend.html 
+
+### Fidelity
+Title: Moving Average Trading Signal - Stocks
+
+Publisher/Website: Fidelity
+
+URL: https://www.fidelity.com/viewpoints/active-investor/moving-averages#:~:text=A%20longer%20moving%20average%2C%20such,to%20assess%20short%2Dterm%20patterns. 
+
